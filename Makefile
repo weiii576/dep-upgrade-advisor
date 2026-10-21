@@ -12,7 +12,7 @@ PSQL := $(COMPOSE) exec -T db psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -v ON_E
 DB_WAIT_SECONDS ?= 60
 
 .DEFAULT_GOAL := help
-.PHONY: help db-up db-down db-reset db-logs db-psql db-check generate migrate migrate-reset studio
+.PHONY: help db-up db-down db-reset db-logs db-psql db-check generate migrate migrate-deploy migrate-reset studio test
 
 help: ## list targets
 	@grep -E '^[a-z-]+: ## ' $(firstword $(MAKEFILE_LIST)) | awk -F ': ## ' '{ printf "  %-14s %s\n", $$1, $$2 }'
@@ -45,7 +45,10 @@ generate: ## generate the Prisma client into packages/db/src/generated
 
 migrate: ## create and apply a dev migration (NAME=<migration_name>)
 	@test -n "$(NAME)" || { echo "Run: make migrate NAME=<migration_name>"; exit 1; }
-	$(PRISMA) migrate dev --name $(NAME)
+	$(PRISMA) migrate dev --name $(NAME) $(ARGS)
+
+migrate-deploy: ## apply pending migrations without creating new ones (CI)
+	$(PRISMA) migrate deploy
 
 migrate-reset: ## drop the database, re-apply every migration, regenerate (requires CONFIRM=yes)
 	@test "$(CONFIRM)" = yes || { echo "migrate-reset drops the database. Run: make migrate-reset CONFIRM=yes"; exit 1; }
@@ -53,3 +56,6 @@ migrate-reset: ## drop the database, re-apply every migration, regenerate (requi
 
 studio: ## open Prisma Studio
 	$(PRISMA) studio
+
+test: ## run every test with DATABASE_URL set
+	pnpm test

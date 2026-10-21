@@ -8,3 +8,197 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum DependencyType {
+  prod
+  dev
+  peer
+  optional
+
+  @@map("dependency_type")
+}
+
+enum RootDependencyType {
+  prod
+  dev
+
+  @@map("root_dependency_type")
+}
+
+enum AdvisorySeverity {
+  low
+  moderate
+  high
+  critical
+
+  @@map("advisory_severity")
+}
+
+enum DocumentKind {
+  advisory_description
+  release_notes
+  upgrade_policy
+
+  @@map("document_kind")
+}
+
+model Repository {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  installations Installation[]
+  documents     Document[]
+
+  @@map("repository")
+}
+
+model Package {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+
+  versions          PackageVersion[]
+  dependents        PackageVersionDependency[]
+  advisoryPackages  AdvisoryPackage[]
+
+  @@map("package")
+}
+
+model PackageVersion {
+  id         String  @id @default(uuid()) @db.Uuid
+  packageId  String  @db.Uuid
+  version    String
+  deprecated Boolean @default(false)
+
+  package       Package                    @relation(fields: [packageId], references: [id])
+  dependencies  PackageVersionDependency[]
+  installations Installation[]
+  documents     Document[]
+
+  @@unique([packageId, version])
+  @@map("package_version")
+}
+
+model PackageVersionDependency {
+  packageVersionId   String         @db.Uuid
+  dependsOnPackageId String         @db.Uuid
+  versionRange       String
+  type               DependencyType
+
+  packageVersion   PackageVersion @relation(fields: [packageVersionId], references: [id])
+  dependsOnPackage Package        @relation(fields: [dependsOnPackageId], references: [id])
+
+  @@id([packageVersionId, dependsOnPackageId, type])
+  @@index([dependsOnPackageId])
+  @@map("package_version_dependency")
+}
+
+model Advisory {
+  id          String            @id @default(uuid()) @db.Uuid
+  osvId       String            @unique
+  severity    AdvisorySeverity?
+  summary     String?
+  publishedAt DateTime          @db.Timestamptz
+  modifiedAt  DateTime          @db.Timestamptz
+  withdrawnAt DateTime?         @db.Timestamptz
+  rawJson     Json
+
+  packages  AdvisoryPackage[]
+  documents Document[]
+
+  @@map("advisory")
+}
+
+model AdvisoryPackage {
+  id            String @id @default(uuid()) @db.Uuid
+  advisoryId    String @db.Uuid
+  packageId     String @db.Uuid
+  affectedRange String
+
+  advisory Advisory @relation(fields: [advisoryId], references: [id])
+  package  Package  @relation(fields: [packageId], references: [id])
+
+  @@unique([advisoryId, packageId])
+  @@index([packageId])
+  @@map("advisory_package")
+}
+
+model Installation {
+  id               String @id @default(uuid()) @db.Uuid
+  repositoryId     String @db.Uuid
+  packageVersionId String @db.Uuid
+
+  repository     Repository     @relation(fields: [repositoryId], references: [id])
+  packageVersion PackageVersion @relation(fields: [packageVersionId], references: [id])
+
+  dependsOn        InstallationEdge[] @relation("EdgeFrom")
+  dependedOnBy     InstallationEdge[] @relation("EdgeTo")
+  rootDependencies RootDependency[]
+
+  @@unique([repositoryId, id])
+  @@unique([repositoryId, packageVersionId])
+  @@map("installation")
+}
+
+model InstallationEdge {
+  repositoryId            String @db.Uuid
+  installationId          String @db.Uuid
+  dependsOnInstallationId String @db.Uuid
+
+  installation          Installation @relation("EdgeFrom", fields: [repositoryId, installationId], references: [repositoryId, id])
+  dependsOnInstallation Installation @relation("EdgeTo", fields: [repositoryId, dependsOnInstallationId], references: [repositoryId, id])
+
+  @@id([installationId, dependsOnInstallationId])
+  @@index([repositoryId, dependsOnInstallationId])
+  @@map("installation_edge")
+}
+
+model RootDependency {
+  repositoryId   String             @db.Uuid
+  installationId String             @db.Uuid
+  versionRange   String
+  type           RootDependencyType
+
+  installation Installation @relation(fields: [repositoryId, installationId], references: [repositoryId, id])
+
+  @@id([repositoryId, installationId, type])
+  @@map("root_dependency")
+}
+
+model Document {
+  id               String       @id @default(uuid()) @db.Uuid
+  kind             DocumentKind
+  title            String?
+  content          String
+  sourceUrl        String       @unique
+  advisoryId       String?      @db.Uuid
+  packageVersionId String?      @db.Uuid
+  repositoryId     String?      @db.Uuid
+  createdAt        DateTime     @default(now()) @db.Timestamptz
+  updatedAt        DateTime     @updatedAt @db.Timestamptz
+
+  advisory       Advisory?       @relation(fields: [advisoryId], references: [id])
+  packageVersion PackageVersion? @relation(fields: [packageVersionId], references: [id])
+  repository     Repository?     @relation(fields: [repositoryId], references: [id])
+  chunks         Chunk[]
+
+  @@index([kind, repositoryId])
+  @@index([advisoryId])
+  @@index([packageVersionId])
+  @@map("document")
+}
+
+model Chunk {
+  id             String                     @id @default(uuid()) @db.Uuid
+  documentId     String                     @db.Uuid
+  ordinal        Int
+  content        String
+  embedding      Unsupported("vector(1536)")
+  embeddingModel String
+  contentHash    String                     @db.Char(64)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, embeddingModel, ordinal])
+  @@index([contentHash, embeddingModel])
+  @@map("chunk")
+}

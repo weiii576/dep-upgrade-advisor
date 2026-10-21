@@ -20,5 +20,6 @@ jobs:
       - run: make db-up
       - run: make db-check
       - run: make generate
+      - run: make migrate-deploy
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: make test
