@@ -16,5 +16,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: make db-up
+      - run: make db-check
+      - run: make generate
       - run: pnpm typecheck
       - run: pnpm test

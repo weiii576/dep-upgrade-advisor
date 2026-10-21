@@ -3,11 +3,14 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.12.2",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "generate": "pnpm --filter @dua/db generate"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

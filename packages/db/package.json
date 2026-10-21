@@ -6,6 +6,19 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "migrate:reset": "prisma migrate reset --force",
+    "studio": "prisma studio"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "prisma": "7.10.1"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "7.10.1",
+    "pg": "^8.23.1"
   }
 }
