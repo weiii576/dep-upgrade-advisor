@@ -105,8 +105,16 @@ Rule keys (semver.org §11; "rule under test" cites these):
 
 | # | version | range | expected | source | rule under test |
 |---|---------|-------|----------|--------|-----------------|
-| 1 |         |       |          |        |                 |
-| 2 |         |       |          |        |                 |
+| 1 | 1.2.7 | 1.2.7 \|\| >=1.2.9 <2.0.0 | true | NR | satisfies first set only (bare version = `=` comparator) |
+| 2 | 1.2.8 | 1.2.7 \|\| >=1.2.9 <2.0.0 | false | NR | gap between sets: satisfies neither |
+| 3 | 1.2.9 | 1.2.7 \|\| >=1.2.9 <2.0.0 | true | NR | second set: lower bound inclusive |
+| 4 | 1.4.6 | 1.2.7 \|\| >=1.2.9 <2.0.0 | true | NR | second set: inside the range |
+| 5 | 2.0.0 | 1.2.7 \|\| >=1.2.9 <2.0.0 | false | NR, S11 | second set: upper bound strict (11.2) |
+| 6 | 1.2.6 | 1.2.7 \|\| >=1.2.9 <2.0.0 | false | NR, S11 | below every set (11.2) |
+| 7 | 1.2.3-beta.2 | >=1.2.3-beta.1 <1.3.0 \|\| >=2.0.0 | true | NR-pre, S11 | tagged comparator with the same tuple is in the matching set (11.4.1) |
+| 8 | 1.2.4-beta.2 | >=1.2.3-beta.1 <1.3.0 \|\| >=2.0.0 | false | NR-pre | no set has a tagged comparator on 1.2.4, so it is excluded even though it is numerically inside set 1 |
+| 9 | 1.2.4-beta.0 | >=1.2.3-beta.1 <2.0.0 \|\| 1.2.4-beta.0 | true | NR-pre | second set matches exactly (same tuple, has tag) |
+| 10 | 1.2.4-beta.1 | >=1.2.3-beta.1 <2.0.0 \|\| 1.2.4-beta.0 | false | NR-pre | NR-pre is checked per comparator set: set 2 has the 1.2.4 tag but fails `=`; set 1 is numerically fine but has no 1.2.4 tag |
 
 ## 5 | Pre-release (fill on 10/21)
 

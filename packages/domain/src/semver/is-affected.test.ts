@@ -17,8 +17,15 @@ const TABLE_OPTIONS = { includePrerelease: false } as const;
 
 function parseRow(line: string): Omit<Case, 'section'> | null {
   if (!line.startsWith('|')) return null;
-  const cells = line.split('|').slice(1, -1).map((c) => c.trim());
-  if (cells.length !== 6) return null;
+  // GFM escapes a literal pipe in a cell as \|, so `||` ranges are written \|\|.
+  const cells = line
+    .split(/(?<!\\)\|/)
+    .slice(1, -1)
+    .map((c) => c.trim().replace(/\\\|/g, '|'));
+  if (cells.length !== 6) {
+    if (/^\d+$/.test(cells[0] ?? '')) throw new Error(`CASES.md row has ${cells.length} cells, expected 6: ${line}`);
+    return null;
+  }
   const [n, version, range, expected, , rule] = cells;
   if (!/^\d+$/.test(n) || version === '' || range === '') return null;
   if (expected !== 'true' && expected !== 'false') return null;
